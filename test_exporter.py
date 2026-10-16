@@ -30,7 +30,7 @@ class ExportTests(unittest.TestCase):
         return tuple(data[:3])
 
     def test_black_and_stereo_and_resume(self):
-        path,status=e.export_song(self.song,self.dest)
+        path,status=e.export_song(self.song,self.dest,ending='black')
         self.assertEqual(status,'exportado')
         self.assertLess(max(self.last_pixel(path)),15)
         self.assertAlmostEqual(float(e.probe(path)['format']['duration']),2,delta=.1)
@@ -41,16 +41,27 @@ class ExportTests(unittest.TestCase):
             samples=array.array('f');samples.frombytes(raw)
             crossings=sum(a<=0<b for a,b in zip(samples,samples[1:]))
             self.assertAlmostEqual(crossings,freq,delta=8)
-        self.assertIn('omitido',e.export_song(self.song,self.dest)[1])
+        self.assertIn('omitido',e.export_song(self.song,self.dest,ending='black')[1])
         with self.assertRaises(e.ExportError):e.export_song(self.song,self.dest,ending='freeze')
 
     def test_loop_and_freeze(self):
         self.song.project['loop_video']=1
-        path,_=e.export_song(self.song,self.dest)
+        path,_=e.export_song(self.song,self.dest,ending='black')
         self.assertGreater(self.last_pixel(path)[0],200)
         self.song.project['loop_video']=0
         path,_=e.export_song(self.song,Path(self.tmp.name)/'freeze',ending='freeze')
         self.assertGreater(self.last_pixel(path)[0],200)
+
+    def test_default_repeats_short_video_without_extending_song(self):
+        # Two-second audio, 0.5-second video, loop flag off in the backup.
+        self.assertEqual(self.song.project['loop_video'],0)
+        path,_=e.export_song(self.song,self.dest)
+        info=e.probe(path)
+        self.assertAlmostEqual(float(info['format']['duration']),2,delta=.04)
+        self.assertGreater(self.last_pixel(path)[0],200)
+        video=next(s for s in info['streams'] if s['codec_type']=='video')
+        self.assertEqual(int(video['nb_frames']),60)
+        self.assertLessEqual(float(video['duration']),2)
 
     def test_cancellation_and_readonly_and_missing(self):
         cancel=threading.Event();cancel.set()

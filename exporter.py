@@ -119,8 +119,10 @@ def fingerprint(song, settings):
     return hashlib.sha256(payload.encode()).hexdigest()
 
 
-def export_song(song, destination, progress=lambda value: None, cancel=None, ending='black', crf=18):
-    """Use exact WAV duration. Loop flagged video; otherwise black/freeze after EOF."""
+def export_song(song, destination, progress=lambda value: None, cancel=None, ending='loop', crf=18):
+    """Repeat short visuals by default, bounded by exact WAV duration."""
+    if ending not in ('loop', 'black', 'freeze'):
+        raise ExportError('Modo de final de video no válido.')
     errors = song.issues()
     if errors:
         raise ExportError('\n'.join(errors))
@@ -157,7 +159,8 @@ def export_song(song, destination, progress=lambda value: None, cancel=None, end
     temp = destination / (base + '.partial.mp4')
     log = destination / (base + '.ffmpeg.log')
     cmd = [tool('ffmpeg'), '-hide_banner', '-nostdin', '-y']
-    if song.project['loop_video']:
+    loop_video = bool(song.project['loop_video']) or ending == 'loop'
+    if loop_video:
         cmd += ['-stream_loop', '-1']
     cmd += ['-i', str(song.video)]
     for audio in song.audio:
@@ -165,7 +168,7 @@ def export_song(song, destination, progress=lambda value: None, cancel=None, end
     left = 1 + next(i for i,t in enumerate(song.tracks) if t['stereo_position'] == 'L')
     right = 1 + next(i for i,t in enumerate(song.tracks) if t['stereo_position'] == 'R')
     vf = 'scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,setpts=PTS-STARTPTS'
-    if not song.project['loop_video']:
+    if not loop_video:
         vf += ',tpad=stop_mode=' + ('clone' if ending == 'freeze' else 'add:color=black') + f':stop_duration={duration:.9f}'
     af = f'[{left}:a:0][{right}:a:0]join=inputs=2:channel_layout=stereo:map=0.0-FL|1.0-FR,asetpts=PTS-STARTPTS[a]'
     cmd += ['-filter_complex', vf.join(['[0:v:0]', '[v];']) + af,
@@ -223,7 +226,7 @@ if __name__ == '__main__':
     import argparse
     parser=argparse.ArgumentParser(description='Exportar audio y video desde un backup B.Beat')
     parser.add_argument('backup');parser.add_argument('--output');parser.add_argument('--ids',nargs='*',type=int)
-    parser.add_argument('--ending',choices=['black','freeze'],default='black')
+    parser.add_argument('--ending',choices=['loop','black','freeze'],default='loop')
     args=parser.parse_args()
     for song in load_backup(args.backup):
         if args.ids is not None and song.id not in args.ids:

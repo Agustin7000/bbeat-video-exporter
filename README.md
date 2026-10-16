@@ -13,10 +13,13 @@ Esta entrega es el código listo para ejecutar; requiere Python 3.10+ con Tkinte
 - MP4 H.264, calidad CRF 18, audio AAC estéreo 320 kb/s a 48 kHz.
 - Conserva los timestamps/cuadros del video sin imponer 25 o 30 FPS.
 - Duración determinada por el WAV, sin cortar la canción porque termine el video.
-- Repite los videos cuando el proyecto tiene `loop_video` activado.
-- Para videos sin loop que terminan antes, permite negro (predeterminado) o último cuadro congelado. Esta elección es explícita: no se ha verificado cuál de ambas reproduce exactamente el comportamiento del equipo.
+- Repite los videos cortos desde el principio hasta el final del audio, aunque el backup no tenga `loop_video` activado. La última repetición se corta al finalizar la canción.
+- La opción predeterminada es **Repetir video hasta el final**. También permite negro o último cuadro congelado para proyectos sin loop si se eligen manualmente.
+- **Abrir carpeta** abre la carpeta de destino en el explorador, incluso mientras se exporta.
 - Omite exportaciones terminadas del mismo origen y configuración mediante recibos `.export.json`. No reemplaza MP4 existentes que no coincidan. Se puede cancelar y volver a iniciar: las canciones completas se omiten y la incompleta se vuelve a renderizar.
 - Registra los errores de FFmpeg junto a los videos. Los archivos parciales se eliminan al cancelar o fallar.
+
+Al actualizar desde la versión anterior, elegí una carpeta nueva para volver a exportar con loops automáticos: los MP4 existentes no se sobrescriben cuando cambia la configuración.
 
 ## Alcance verificado
 
